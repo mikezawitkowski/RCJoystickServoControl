@@ -188,20 +188,14 @@ void printReport() {
   Serial.print("Right Stick Y:");
   Serial.println(map(ch2, 1000,2000,-500,500));
 
-//  Serial.print("\t\tturnVal:"); //Serial debugging stuff
-//  Serial.print(turnVal);
-//  
-//  Serial.print("\t\tmoveVal - turnVal:"); //Serial debugging stuff
-//  Serial.print(moveVal - turnVal);
-//  Serial.print("\n\n\n"); //Serial debugging stuff
+  Serial.print("\t\tturnVal:"); //Serial debugging stuff
+  Serial.print(turnVal);
+  
+  Serial.print("\t\tmoveVal - turnVal:"); //Serial debugging stuff
+  Serial.print(moveVal - turnVal);
+  Serial.print("\n\n\n"); //Serial debugging stuff
   
   delay(800);  // The delay is great for monitoring STDOUT; but awful for real motor behavior 
 }
 
-
-
-//void setSpeed(int speedValue){
-//  analogWrite(E1, speedValue);
-//  analogWrite(E2, speedValue);
-//}
 
