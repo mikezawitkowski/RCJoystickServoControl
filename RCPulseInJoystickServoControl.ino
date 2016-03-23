@@ -3,7 +3,7 @@ RC PulseIn Joystick Servo Control
 by Mike Zawitkowski
 created on March 19, 2016
  
-Enables an Arduino based robot car to be controlled directly iva
+Enables an Arduino based robot car to be controlled directly via
 Frsky Taranis X9D Transmitter and X8R receiver.
 
 
@@ -20,6 +20,11 @@ CHANGES:
     - Changed move, turn variable names to avoid namespace conflict (move already exists)
     - Fixed error in channel mapping 
     - Added additional serial print statements for debugging
+
+  3/22/2016
+    - Allow left stick to be idle at zero
+    - Move movement to separate function for readibility
+    - Streamline conditionals
       
   TODO LIST:
     - Replace pulseIn with interrupts
@@ -28,6 +33,8 @@ CHANGES:
     - Cross-link with photos to an Instructables.com post
     - Incorporate autonomous mode
     - Run all channels into Arduino on a single wire
+    - Add protection to the L293D in case of voltage drop
+    
 
  CREDITS, THANKS, FURTHER READING:
 
@@ -56,7 +63,6 @@ CHANGES:
     http://robotics.stackexchange.com/questions/1207/read-multiple-channels-of-rx-tx-with-arduino
     
 
-
     http://blog.whatgeek.com.pt/2015/03/arduino-l293d-dc-motors-control/    
 
 */
@@ -81,6 +87,7 @@ int dir_a2 = 8;
 int dir_b1 = 12;
 int dir_b2 = 13;
 
+
 void setup() {
 
   pinMode(9, INPUT); // Set our channel input pins as such
@@ -103,48 +110,51 @@ void setup() {
 
 
 void loop() {
+  
   // Read pulse width of each channel
   ch1 = pulseIn(9, HIGH, 25000); // Left stick (engaged/disengaged)
-  ch2 = pulseIn(11, HIGH, 25000); // Right stick up/down NOTE the swapped pins
-  ch3 = pulseIn(10, HIGH, 25000); // Right stick left/right NOTE the swapped pins
-  
-  moveVal = map(ch2, 1000, 2000, -1000, 1000); //center over zero
-  moveVal = constrain(moveVal, -255, 255);   //only pass values whose absolutes are
-                                             //valid pwm values
+
   // Only run the loop when ch1 is Engaged
   if (ch1 > 1000) {
-    if (moveVal > 0) {          // if moveVal is positive
-//      Serial.println("Moving Forward");
-      moveForward();  // then we move forward
-    };  
-    if (moveVal < 0) {          // if moveVal is negative
-//      Serial.println("Moving Backward");
-      moveBackward();          // we move backward
-      moveVal = abs(moveVal);   // but now switch it to a positive int for the next step
-    };
+    ch2 = pulseIn(11, HIGH, 25000); // Right stick up/down NOTE the swapped pins
+    moveVal = map(ch2, 1000, 2000, -1000, 1000); //center over zero
+    moveVal = constrain(moveVal, -255, 255);   //only pass values whose absolutes are
+                                               //valid pwm values
+    if (abs(moveVal)) < 10 {
 
-    /*Here we're determining whether a left or a right turn is being 
-    executed*/
-    turnVal = map(ch3,1000,2000,-500,500);
-    turnVal = constrain(turnVal, -255, 255);
+      moveVal = 0;
+      fullStop();
 
-    /*This is where we do some mixing, by subtracting our "turn" 
-    variable from the appropriate motor's speed we can execute
-    a turn in either direction*/
-    if (turnVal > 0) {
-      analogWrite(pwm_b, moveVal - turnVal); 
-      analogWrite(pwm_a, moveVal);
-    };
-    if (turnVal < 0) {
-      turnVal = abs(turnVal); 
-      analogWrite(pwm_a, moveVal - turnVal); 
-      analogWrite(pwm_b, moveVal);
-    };
-  } else {
-    fullStop();
+    } else {
+      
+      ch3 = pulseIn(10, HIGH, 25000); // Right stick left/right NOTE the swapped pins
+      turnVal = map(ch3,1000,2000,-500,500);
+      turnVal = constrain(turnVal, -255, 255);
+      movement(moveVal, turnVal);
+
+    };                                                                                                                                                                                                                                                                                                                                                                                      
+}
+
+
+void movement(int moveVal, int turnVal) {
+  if (moveVal > 0) {          // if moveVal is positive
+    moveForward();  // then we move forward
+  } else {          // if moveVal is negative
+    moveBackward();          // we move backward
+    moveVal = abs(moveVal);   // but now switch it to a positive int for the next step
   };
-//  printReport();
-                                                                                                                                                                                                                                                                                                                                                                                      
+  
+  /*This is where we do some mixing, by subtracting our "turn" 
+  variable from the appropriate motor's speed we can execute
+  a turn in either direction*/
+  if (turnVal > 0) {
+    analogWrite(pwm_b, moveVal - turnVal); 
+    analogWrite(pwm_a, moveVal);
+  } else {
+    turnVal = abs(turnVal); 
+    analogWrite(pwm_a, moveVal - turnVal); 
+    analogWrite(pwm_b, moveVal);
+  };
 }
 
 void moveForward() {
