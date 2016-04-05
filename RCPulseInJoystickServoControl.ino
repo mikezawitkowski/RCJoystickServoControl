@@ -6,7 +6,6 @@ created on March 19, 2016
 Enables an Arduino based robot car to be controlled directly via
 Frsky Taranis X9D Transmitter and X8R receiver.
 
-
 CHANGES:
   3/19/2016 
     - Incorporated code into loop that was uncommented in tutorial
@@ -62,9 +61,7 @@ CHANGES:
   Great stacikexchange post with lots of links, and discussion about getting all RX signals into a single input:
     http://robotics.stackexchange.com/questions/1207/read-multiple-channels-of-rx-tx-with-arduino
     
-
     http://blog.whatgeek.com.pt/2015/03/arduino-l293d-dc-motors-control/    
-
 */
  
 
@@ -86,6 +83,81 @@ int dir_a1 = 7;
 int dir_a2 = 8;
 int dir_b1 = 12;
 int dir_b2 = 13;
+
+
+void movement(int moveVal, int turnVal) {
+  if (moveVal > 0) {          // if moveVal is positive
+    moveForward();  // then we move forward
+  } else {          // if moveVal is negative
+    moveBackward();          // we move backward
+    moveVal = abs(moveVal);   // but now switch it to a positive int for the next step
+  };
+  
+  /*This is where we do some mixing, by subtracting our "turn" 
+  variable from the appropriate motor's speed we can execute
+  a turn in either direction*/
+  if (turnVal > 0) {
+    analogWrite(pwm_b, moveVal - turnVal); 
+    analogWrite(pwm_a, moveVal);
+  } else {
+    turnVal = abs(turnVal); 
+    analogWrite(pwm_a, moveVal - turnVal); 
+    analogWrite(pwm_b, moveVal);
+  };
+}
+
+
+void moveForward() {
+    digitalWrite(dir_a1, 1);   
+    digitalWrite(dir_a2, 0);       
+    digitalWrite(dir_b1, 1);   
+    digitalWrite(dir_b2, 0);   
+}
+
+
+void moveBackward() {
+    digitalWrite(dir_a1, 0);   
+    digitalWrite(dir_a2, 1);   
+    digitalWrite(dir_b1, 0);   
+    digitalWrite(dir_b2, 1);   
+}
+
+
+void fullStop() {
+    analogWrite(pwm_a, 0);
+    analogWrite(pwm_b, 0);
+    digitalWrite(dir_a1, 0);   
+    digitalWrite(dir_a2, 0);     
+    digitalWrite(dir_b1, 0);   
+    digitalWrite(dir_b2, 0);   
+}
+
+
+// Easier to comment out serial out content if it's a single function
+void printReport() {
+  if (ch1 > 1000) {
+    Serial.println("Left Switch: Engaged");
+  }
+  if (ch1 < 1000) {
+    Serial.println("Left Switch: Disengaged");
+  }
+
+  Serial.print("Right Stick X:");
+  Serial.println(map(ch3, 1000,2000,-500,500));
+  
+  Serial.print("Right Stick Y:");
+  Serial.println(map(ch2, 1000,2000,-500,500));
+
+  Serial.print("\t\tturnVal:"); //Serial debugging stuff
+  Serial.print(turnVal);
+  
+  Serial.print("\t\tmoveVal - turnVal:"); //Serial debugging stuff
+  Serial.print(moveVal - turnVal);
+  Serial.print("\n\n\n"); //Serial debugging stuff
+  
+  delay(800);  // The delay is great for monitoring STDOUT; but awful for real motor behavior 
+}
+
 
 
 void setup() {
@@ -113,99 +185,23 @@ void loop() {
   
   // Read pulse width of each channel
   ch1 = pulseIn(9, HIGH, 25000); // Left stick (engaged/disengaged)
-
+ 
   // Only run the loop when ch1 is Engaged
   if (ch1 > 1000) {
     ch2 = pulseIn(11, HIGH, 25000); // Right stick up/down NOTE the swapped pins
     moveVal = map(ch2, 1000, 2000, -1000, 1000); //center over zero
     moveVal = constrain(moveVal, -255, 255);   //only pass values whose absolutes are
                                                //valid pwm values
-    if (abs(moveVal)) < 10 {
-
+    if (abs(moveVal) < 10) {
       moveVal = 0;
       fullStop();
-
-    } else {
-      
+    } else {      
       ch3 = pulseIn(10, HIGH, 25000); // Right stick left/right NOTE the swapped pins
       turnVal = map(ch3,1000,2000,-500,500);
       turnVal = constrain(turnVal, -255, 255);
       movement(moveVal, turnVal);
-
     };                                                                                                                                                                                                                                                                                                                                                                                      
-}
-
-
-void movement(int moveVal, int turnVal) {
-  if (moveVal > 0) {          // if moveVal is positive
-    moveForward();  // then we move forward
-  } else {          // if moveVal is negative
-    moveBackward();          // we move backward
-    moveVal = abs(moveVal);   // but now switch it to a positive int for the next step
-  };
-  
-  /*This is where we do some mixing, by subtracting our "turn" 
-  variable from the appropriate motor's speed we can execute
-  a turn in either direction*/
-  if (turnVal > 0) {
-    analogWrite(pwm_b, moveVal - turnVal); 
-    analogWrite(pwm_a, moveVal);
-  } else {
-    turnVal = abs(turnVal); 
-    analogWrite(pwm_a, moveVal - turnVal); 
-    analogWrite(pwm_b, moveVal);
-  };
-}
-
-void moveForward() {
-    digitalWrite(dir_a1, 1);   
-    digitalWrite(dir_a2, 0);   
-    
-    digitalWrite(dir_b1, 1);   
-    digitalWrite(dir_b2, 0);   
-}
-
-void moveBackward() {
-    digitalWrite(dir_a1, 0);   
-    digitalWrite(dir_a2, 1);   
-    
-    digitalWrite(dir_b1, 0);   
-    digitalWrite(dir_b2, 1);   
-}
-
-
-void fullStop() {
-    analogWrite(pwm_a, 0);
-    analogWrite(pwm_b, 0);
-    digitalWrite(dir_a1, 0);   
-    digitalWrite(dir_a2, 0);     
-    digitalWrite(dir_b1, 0);   
-    digitalWrite(dir_b2, 0);   
-}
-
-// Easier to comment out serial out content if it's a single function
-void printReport() {
-  if (ch1 > 1000) {
-    Serial.println("Left Switch: Engaged");
   }
-  if (ch1 < 1000) {
-    Serial.println("Left Switch: Disengaged");
-  }
-
-  Serial.print("Right Stick X:");
-  Serial.println(map(ch3, 1000,2000,-500,500));
-  
-  Serial.print("Right Stick Y:");
-  Serial.println(map(ch2, 1000,2000,-500,500));
-
-  Serial.print("\t\tturnVal:"); //Serial debugging stuff
-  Serial.print(turnVal);
-  
-  Serial.print("\t\tmoveVal - turnVal:"); //Serial debugging stuff
-  Serial.print(moveVal - turnVal);
-  Serial.print("\n\n\n"); //Serial debugging stuff
-  
-  delay(800);  // The delay is great for monitoring STDOUT; but awful for real motor behavior 
+  printReport();
 }
-
 
